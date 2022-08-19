@@ -1,5 +1,5 @@
 import { APIGatewayProxyEvent, APIGatewayProxyResult, Context } from "aws-lambda";
-import { ProductRepository } from "/opt/nodejs/productsLayer"
+import { Product, ProductRepository } from "/opt/nodejs/productsLayer"
 import { DynamoDB } from "aws-sdk"
 
 const productDB = process.env.PRODUCTS_DDB!
@@ -17,31 +17,79 @@ export async function handler(event:APIGatewayProxyEvent, context: Context): Pro
 
 
     if(event.resource === "/products"){
-        console.log("POST - /products")
+
+        const productDto = JSON.parse(event.body!) as Product
+
+        console.log(`POST - /products {${productDto}}`)
+
+        const productCreated = await productRepository.create(productDto)
+
         return {
             statusCode: 200, 
             body: JSON.stringify({
+                data: productCreated,
                 message: "POST Products - OK"
             })
         }
     }else if(event.resource === "/products/{id}"){
+        
         const productId = event.pathParameters!.id as string
 
         if(event.httpMethod === 'PUT'){
+
             console.log(`PUT - /products/{${productId}}`)
-            return {
-                statusCode: 200, 
-                body: JSON.stringify({
-                    message: `PUT - /products/{${productId}}`
-                })
+            
+            try {
+            
+                const productDTO = JSON.parse(event.body!) as Product
+
+                const productUpdated = await productRepository.updateProductById(productId,productDTO)
+            
+                return {
+                    statusCode: 200, 
+                    body: JSON.stringify({
+                        data: productUpdated,
+                        message: `PUT - /products/{${productId}}`
+                    })
+                }
+            } catch (error) {
+            
+                console.log(`ERROR -> UPDATED - /products/{${productId}}`)
+            
+                return {
+                    statusCode: 404, 
+                    body: JSON.stringify({
+                        message: `ERROR -> UPDATED - /products/{${productId}}`
+                    })
+                }
             }
+
+
         }else if (event.httpMethod === 'DELETE'){
+            
             console.log(`DELETE - /products/{${productId}}`)
-            return {
-                statusCode: 200, 
-                body: JSON.stringify({
-                    message: `DELETE - /products/{${productId}}`
-                })
+            
+            try {
+            
+                const productDeleted = await productRepository.deleteProductById(productId)
+            
+                return {
+                    statusCode: 200, 
+                    body: JSON.stringify({
+                        data: productDeleted,
+                        message: `DELETE - /products/{${productId}}`
+                    })
+                }
+            } catch (error) {
+            
+                console.log((<Error> error).message)
+            
+                return {
+                    statusCode: 404, 
+                    body: JSON.stringify({
+                        message: `ERROR -> DELETE - /products/{${productId}}`
+                    })
+                }
             }
         } 
     }
