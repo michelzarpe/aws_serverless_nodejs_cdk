@@ -1,4 +1,11 @@
-import { APIGatewayProxyEvent, APIGatewayProxyResult, Context } from "aws-lambda";
+import { APIGatewayProxyEvent, APIGatewayProxyResult, Context } from "aws-lambda"
+import { ProductRepository } from "/opt/nodejs/productsLayer"
+import { DynamoDB } from "aws-sdk"
+
+const productDB = process.env.PRODUCTS_DDB!
+const clientDB = new DynamoDB.DocumentClient()
+const productRepository = new ProductRepository(clientDB,productDB)
+
 
 export async function handler(event:APIGatewayProxyEvent, context: Context): Promise<APIGatewayProxyResult> {    
 
@@ -11,22 +18,45 @@ export async function handler(event:APIGatewayProxyEvent, context: Context): Pro
 
     if(event.resource === "/products"){
         if( httpMethod === 'GET'){
-            console.log("GET - /products")
+            
+            const data = await productRepository.getAllProducts()
+
+            console.log(`GET - /products ${data}`)
+
             return {
                 statusCode: 200, 
                 body: JSON.stringify({
+                    data: data,
                     message: "GET Products - OK"
                 })
             }
         }
     } else if(event.resource === "/products/{id}"){
+
         const productId = event.pathParameters!.id as string
-        console.log(`GET - /products/{${productId}}`)
-        return {
-            statusCode: 200, 
-            body: JSON.stringify({
-                message: `GET - /products/{${productId}}`
-            })
+
+        try{
+            const data = await productRepository.getProductById(productId)
+
+            console.log(`GET - /products/{${productId}}, data: {${data}}`)
+            
+            return {
+                statusCode: 200, 
+                body: JSON.stringify({
+                    data: data,
+                    message: `GET - /products/{${productId}}`
+                })
+            }
+        } catch (error){
+
+            console.error((<Error>error).message)
+            
+            return {
+                statusCode: 400,
+                body: JSON.stringify({
+                    message: (<Error>error).message
+                })
+            }
         }
     }
 
