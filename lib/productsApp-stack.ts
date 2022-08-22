@@ -65,7 +65,8 @@ readonly productsDdb: dynadb.Table
                 insightsVersion: lambda.LambdaInsightsVersion.VERSION_1_0_119_0
             })
 
-            props.eventsDdb.grantReadData(productEventsHandler)
+            //inserindo permissão para o productEventsHandler poder gravar valores na tabela de events
+            props.eventsDdb.grantWriteData(productEventsHandler)
 
         //construindo função Fetch
         this.productsFetchHandler = new lambdaNodeJs.NodejsFunction(this, 
@@ -101,7 +102,7 @@ readonly productsDdb: dynadb.Table
                 },
                 environment: {
                     PRODUCTS_DDB: this.productsDdb.tableName,
-                    PRODUVT_EVENTS_FUNCTION_NAME: productEventsHandler.functionName //acessar essa funcao 
+                    PRODUCT_EVENTS_FUNCTION_NAME: productEventsHandler.functionName //acessar essa funcao 
                 },
                 layers: [productsLayer, productEventsLayer],
                 tracing: lambda.Tracing.ACTIVE,
@@ -112,9 +113,9 @@ readonly productsDdb: dynadb.Table
         this.productsDdb.grantReadData(this.productsFetchHandler)
         this.productsDdb.grantWriteData(this.productsAdminHandler)
 
-        //inserindo permissão para que productsAdminHandler possa acessar productsEventsHanker
+        //inserindo permissão para que productsAdminHandler possa acessar productsEventsHandler
         productEventsHandler.grantInvoke(this.productsAdminHandler)
-
+   
 
             
         

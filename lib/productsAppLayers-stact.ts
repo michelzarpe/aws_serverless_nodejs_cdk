@@ -23,7 +23,7 @@ export class ProductsAppLayersStack extends cdk.Stack {
             stringValue: productsLayers.layerVersionArn
         })
         
-        //criando layer para conectar ao banco a tabela events do dynamo
+        //criando layer com iterface para inserir events de produto no dynamo
         const productEventsLayers = new lambda.LayerVersion(this, "ProductEventsLayer", {
             code: lambda.Code.fromAsset('lambda/products/layers/productEventsLayer'),
             compatibleRuntimes: [lambda.Runtime.NODEJS_14_X],

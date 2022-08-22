@@ -10,7 +10,7 @@ const eventsDdb = process.env.EVENTS_DDB!
 //cliente para acessar dynamo
 const ddbClient = new DynamoDB.DocumentClient()
 
-export async function handller(events: ProductEvent, context: Context, callback: Callback): Promise<void> {
+export async function handler(events: ProductEvent, context: Context, callback: Callback): Promise<void> {
 
     console.log(`Evento: ${events}`)
 
@@ -22,9 +22,7 @@ export async function handller(events: ProductEvent, context: Context, callback:
         productEventCreated: true,
         message: "Ok"
     }))
-
 }
-
 
 function createEvent(event: ProductEvent) {
     
