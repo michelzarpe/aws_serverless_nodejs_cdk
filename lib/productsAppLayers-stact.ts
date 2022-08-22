@@ -16,7 +16,7 @@ export class ProductsAppLayersStack extends cdk.Stack {
             code: lambda.Code.fromAsset('lambda/products/layers/productsLayer'),
             compatibleRuntimes: [lambda.Runtime.NODEJS_14_X],
             layerVersionName: "ProductsLayer",
-            removalPolicy: cdk.RemovalPolicy.RETAIN //mantei mesmo que apague a stack
+            removalPolicy: cdk.RemovalPolicy.DESTROY //mantei mesmo que apague a stack
         })
     
         // colocando arn no systems manager
