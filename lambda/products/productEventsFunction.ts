@@ -12,14 +12,17 @@ const ddbClient = new DynamoDB.DocumentClient()
 
 export async function handller(events: ProductEvent, context: Context, callback: Callback): Promise<void> {
 
-console.log(`Evento: ${events}`)
+    console.log(`Evento: ${events}`)
 
-console.log(`Lambda requestId: ${context.awsRequestId}`)
+    console.log(`Lambda requestId: ${context.awsRequestId}`)
 
+    await createEvent(events)
+   
+    callback(null, JSON.stringify({
+        productEventCreated: true,
+        message: "Ok"
+    }))
 
-
-
-    
 }
 
 
