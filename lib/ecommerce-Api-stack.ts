@@ -6,8 +6,10 @@ import { Construct } from 'constructs'
 
 
 interface EcommerceApiStackProps extends cdk.StackProps {
-    productsFetchHandler: lambdaNodeJs.NodejsFunction
-    productsAdminHandler: lambdaNodeJs.NodejsFunction
+    productsFetchHandler: lambdaNodeJs.NodejsFunction;
+    productsAdminHandler: lambdaNodeJs.NodejsFunction;
+    ordersHandler: lambdaNodeJs.NodejsFunction;
+
 }
 
 export class ECommerceApiStack extends cdk.Stack{
@@ -35,27 +37,63 @@ export class ECommerceApiStack extends cdk.Stack{
                 }
             })
 
-            //integração entre lambdas e gateway
-            const productsFetchIntegration = new apigateway.LambdaIntegration(props.productsFetchHandler)
-            const productsAdminIntegration = new apigateway.LambdaIntegration(props.productsAdminHandler)
-               
-            // GET /products
-            const productsResourse = api.root.addResource("products")
-            productsResourse.addMethod("GET", productsFetchIntegration) 
-
-            // GET /products/{id}
-            const productsResourceId = productsResourse.addResource("{id}")
-            productsResourceId.addMethod("GET",productsFetchIntegration)
-
-
-            // POST /products
-            productsResourse.addMethod("POST",productsAdminIntegration)
-            // PUT /products/{id}
-            productsResourceId.addMethod("PUT",productsAdminIntegration)
-            // DELETE /products/{id}
-            productsResourceId.addMethod("DELETE",productsAdminIntegration)
-           
-
+            //integração entre lambdas e gateway na parte de produtos
+            this.createProductsService(props, api)  
+            this.createOrdersService(props,api)   
 
         }
+
+    private createOrdersService(props: EcommerceApiStackProps, api: apigateway.RestApi) {
+
+        const ordersIntegration = new apigateway.LambdaIntegration(props.ordersHandler)// fazer integração entre gateway e function
+
+        const ordersResourse = api.root.addResource("orders")
+
+        // GET /orders
+        // GET /orders?email=...
+        // GET /orders?email=...&orderId=...
+        ordersResourse.addMethod("GET", ordersIntegration)
+
+        //validador
+        const orderDletionValidation = new apigateway.RequestValidator(this,"OrderDeletionValidator",{
+            restApi: api,
+            requestValidatorName: "OrderDeletionValidator",
+            validateRequestParameters: true
+        })
+
+        // DELETE /orders?email=...&orderId=... 
+        ordersResourse.addMethod("DELETE", ordersIntegration,{
+            requestParameters: {
+                'method.request.querystring.email':true,
+                'method.request.querystring.orderId':true
+            },
+            requestValidator: orderDletionValidation
+        })
+
+        // POST /orders
+        ordersResourse.addMethod("POST", ordersIntegration)
+
+        
+    }    
+
+    private createProductsService(props: EcommerceApiStackProps, api: apigateway.RestApi) {
+        const productsFetchIntegration = new apigateway.LambdaIntegration(props.productsFetchHandler)
+        const productsAdminIntegration = new apigateway.LambdaIntegration(props.productsAdminHandler)
+
+        // GET /products
+        const productsResourse = api.root.addResource("products")
+        productsResourse.addMethod("GET", productsFetchIntegration)
+
+        // GET /products/{id}
+        const productsResourceId = productsResourse.addResource("{id}")
+        productsResourceId.addMethod("GET", productsFetchIntegration)
+
+
+        // POST /products
+        productsResourse.addMethod("POST", productsAdminIntegration)
+        // PUT /products/{id}
+        productsResourceId.addMethod("PUT", productsAdminIntegration)
+        // DELETE /products/{id}
+        productsResourceId.addMethod("DELETE", productsAdminIntegration)
+    }
 }

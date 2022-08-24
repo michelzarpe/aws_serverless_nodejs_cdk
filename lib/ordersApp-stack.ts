@@ -18,6 +18,7 @@ export class OrdersAppStack extends cdk.Stack {
     readonly ordersDdb: dynamodb.Table
     readonly ordersHandler: lambdaNodeJs.NodejsFunction
 
+
     constructor(scope: Construct, id: string, props: OrdersAppStackProps){
         super(scope,id,props)
 
@@ -50,5 +51,29 @@ export class OrdersAppStack extends cdk.Stack {
         const productsLayer = lambda.LayerVersion.fromLayerVersionArn(this, "ProductsLayerVersionArn",productsLayersArn)
 
 
+         //construindo função Admin
+         this.ordersHandler = new lambdaNodeJs.NodejsFunction(this, 
+            "OrdersFunction",{
+                functionName:"OrdersFunction",
+                entry: "lambda/orders/ordersFunction.ts",
+                handler: "handler",
+                memorySize: 128,
+                timeout: cdk.Duration.seconds(2),
+                bundling: {
+                   minify: true,
+                   sourceMap: false      
+                },
+                environment: {
+                    ORDERS_DDB: this.ordersDdb.tableName, 
+                    PRODUCTS_DDB: props.productsDdb.tableName
+                },
+                layers: [productsLayer, ordersLayer],
+                tracing: lambda.Tracing.ACTIVE,
+                insightsVersion: lambda.LambdaInsightsVersion.VERSION_1_0_119_0
+            })
+
+        //inserindo permissão de leitura 
+        this.ordersDdb.grantReadWriteData(this.ordersHandler)
+        props.productsDdb.grantReadData(this.ordersHandler)
     }
 }
