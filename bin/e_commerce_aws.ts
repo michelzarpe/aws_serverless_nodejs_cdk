@@ -1,11 +1,11 @@
 import 'source-map-support/register';
 import * as cdk from 'aws-cdk-lib';
 import { ProductsAppStack } from '../lib/productsApp-stack'; 
-import { ECommerceApiStack } from '../lib/ecommerce-Api-stack';
 import { ProductsAppLayersStack } from '../lib/productsAppLayers-stact';
 import { EventsDbdStack } from '../lib/eventsddb-stack';
 import { OrdersAppLayersStack } from '../lib/ordersAppLayers-stack';
 import { OrdersAppStack } from '../lib/ordersApp-stack';
+import { ECommerceApiStack } from '../lib/ecommerce-Api-stack';
 
 const app = new cdk.App();
 
@@ -37,13 +37,12 @@ const productsAppStack = new ProductsAppStack(app,"ProductsApp", {
 productsAppStack.addDependency(productsLayerStack)
 productsAppStack.addDependency(eventsDbdStack)
 
-
 const ordersAppLayerStack = new OrdersAppLayersStack(app, "OrdersAppLayers",{
     tags: tags,
     env: env
 })
 
-const ordersAppStack = new OrdersAppStack(app, "OrdersAppStacl",{
+const ordersAppStack = new OrdersAppStack(app, "OrdersApp",{
     tags: tags,
     env: env,
     productsDdb: productsAppStack.productsDdb
@@ -51,6 +50,7 @@ const ordersAppStack = new OrdersAppStack(app, "OrdersAppStacl",{
 ordersAppStack.addDependency(productsAppStack)
 ordersAppStack.addDependency(ordersAppLayerStack)
 
+ 
 const eCommerceApiStack = new ECommerceApiStack(app,"ECommerceApiGateway", {
     productsFetchHandler: productsAppStack.productsFetchHandler,
     productsAdminHandler: productsAppStack.productsAdminHandler,

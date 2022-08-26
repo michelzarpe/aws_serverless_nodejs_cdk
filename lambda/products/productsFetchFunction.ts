@@ -20,7 +20,7 @@ export async function handler(event:APIGatewayProxyEvent, context: Context): Pro
     console.log(`Request Id: ${apiRequestId} and Lambda Id: ${lambdaRequestId} and Resource: ${event.resource}`)
 
     if(event.resource === "/products"){
-        if( httpMethod === 'GET'){
+        if(httpMethod === 'GET'){
             
             const data = await productRepository.getAllProducts()
 
