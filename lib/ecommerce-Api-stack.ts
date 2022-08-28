@@ -92,17 +92,16 @@ export class ECommerceApiStack extends cdk.Stack{
                         items: {
                             type: apigateway.JsonSchemaType.STRING
                         }
+                    },
+                    payment: {
+                        type: apigateway.JsonSchemaType.STRING,
+                        enum: ["CASH","DEBIT_CARD","CREDIT_CARD"]
                     }
                 },
-                payment: {
-                    type: apigateway.JsonSchemaType.STRING,
-                    enum: ["CASH","DEBIT_CARD","CREDIT_CARD"]
-                }      
-            },
-            required: ["emai","productsId","payment"]
+                required: ["emai","productsId","payment"]      
+            }
         })
         
-
         ordersResourse.addMethod("POST", ordersIntegration, {
             requestValidator: orderRequestValidator,
             requestModels: {
