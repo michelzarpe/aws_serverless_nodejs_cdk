@@ -122,9 +122,46 @@ export class ECommerceApiStack extends cdk.Stack{
         const productsResourceId = productsResourse.addResource("{id}")
         productsResourceId.addMethod("GET", productsFetchIntegration)
 
+        const productRequestValidation = new apigateway.RequestValidator(this, "ProductRequestValidator",{
+            restApi: api,
+            requestValidatorName: "Product request validator",
+            validateRequestBody: true
+        })
+
+        const productModel = new apigateway.Model(this,"ProductModel",{
+            modelName: "ProductModel",
+            restApi: api,
+            contentType: "application/json",
+            schema: {
+                type: apigateway.JsonSchemaType.OBJECT,
+                properties: {
+                    productName: {
+                        type: apigateway.JsonSchemaType.STRING
+                    },
+                    code: {
+                        type: apigateway.JsonSchemaType.STRING
+                    },
+                    model: {
+                        type: apigateway.JsonSchemaType.STRING
+                    },
+                    productUrl: {
+                        type: apigateway.JsonSchemaType.STRING
+                    },
+                    price: {
+                        type: apigateway.JsonSchemaType.NUMBER
+                    }
+                },
+                required: ["productName","code"]
+            }
+        })
 
         // POST /products
-        productsResourse.addMethod("POST", productsAdminIntegration)
+        productsResourse.addMethod("POST", productsAdminIntegration, {
+            requestValidator: productRequestValidation,
+            requestModels: {
+                "application/json": productModel
+            }
+        })
         // PUT /products/{id}
         productsResourceId.addMethod("PUT", productsAdminIntegration)
         // DELETE /products/{id}
