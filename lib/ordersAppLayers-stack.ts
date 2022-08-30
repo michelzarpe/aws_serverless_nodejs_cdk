@@ -53,7 +53,19 @@ export class OrdersAppLayersStack extends cdk.Stack {
             stringValue: orderEventsLayer.layerVersionArn
         })
 
-
+        //construindo ordersEventsLayer
+        const orderEventsRepositoryLayer = new lambda.LayerVersion(this, "OrderEventsRepositoryLayer", {
+            code: lambda.Code.fromAsset('lambda/orders/layers/orderEventsRepositoryLayer'),
+            compatibleRuntimes: [lambda.Runtime.NODEJS_14_X],
+            layerVersionName: "OrderEventsRepositoryLayer",
+            removalPolicy: cdk.RemovalPolicy.DESTROY //mantei mesmo que apague a stack
+        })
+    
+        // colocando arn no systems manager
+        new ssm.StringParameter(this, "OrderEventsRepositoryLayerArn",{
+            parameterName: "OrderEventsRepositoryLayerArn",
+            stringValue: orderEventsRepositoryLayer.layerVersionArn
+        })        
 
     }
 }
