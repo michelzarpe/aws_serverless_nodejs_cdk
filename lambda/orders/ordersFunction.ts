@@ -1,16 +1,19 @@
 import { APIGatewayProxyEvent, APIGatewayProxyResult, Context } from "aws-lambda"
 import { Product, ProductRepository } from "/opt/nodejs/productsLayer"
-import { DynamoDB } from "aws-sdk"
+import { DynamoDB, SNS } from "aws-sdk"
 import * as AWSXray from "aws-xray-sdk"
 import { Order, OrderRepository } from "./layers/ordersLayer/nodejs/orderRepository"
 import { CarrierType, OrderProductResponse, OrderRequest, OrderResponse, PaymentType, ShippingType } from "/opt/nodejs/ordersApiLayer"
+import { OrderEvent, OrderEventType, Envelope } from '/opt/nodejs/orderEventsLayer'
 
 AWSXray.captureAWS(require("aws-sdk"))
 
 const ORDERS_DDB = process.env.ORDERS_DDB!
 const PRODUCTS_DDB = process.env.PRODUCTS_DDB!
+const ORDER_EVENTS_TOPIC_ARN = process.env.ORDER_EVENTS_TOPIC_ARN!
 
 const clientDB = new DynamoDB.DocumentClient()
+const clientSns = new SNS()
 
 const orderRepository = new OrderRepository(clientDB, ORDERS_DDB)
 const productRepository = new ProductRepository(clientDB,PRODUCTS_DDB)
@@ -96,6 +99,13 @@ export async function handler(event:APIGatewayProxyEvent, context: Context): Pro
 
             const orderCreated = await orderRepository.createOrder(order)
 
+            const eventResult = await sendOrderTopic(orderCreated, OrderEventType.CREATED, lambdaRequestId)
+
+            console.log(
+                `Order created: ${orderCreated.sk}
+                - MessageId: ${eventResult.MessageId}`
+            )
+
             return {
                 statusCode:201,
                 body: JSON.stringify(convertToOrderResponse(orderCreated))
@@ -120,6 +130,14 @@ export async function handler(event:APIGatewayProxyEvent, context: Context): Pro
         try {
 
             const orderDeleted = await orderRepository.deleteOrders(email!, orderId!)
+
+            const eventResult = await sendOrderTopic(orderDeleted, OrderEventType.DELETE, lambdaRequestId)
+
+            console.log(
+                `Order deleted: ${orderDeleted.sk}
+                - MessageId: ${eventResult.MessageId}`
+            )
+
 
             return {
                 statusCode:201,
@@ -147,6 +165,34 @@ export async function handler(event:APIGatewayProxyEvent, context: Context): Pro
             message: "Bad request"
         })
     }
+}
+
+function sendOrderTopic(order: Order, eventType: OrderEventType, lambdaRequestId: string){
+
+    const productCodes: string [] = []
+
+    order.products.forEach((prod)=>{
+        productCodes.push(prod.code)
+    })
+
+    const orderEvent: OrderEvent = {
+        productCodes: productCodes,
+        email: order.pk,
+        orderId: order.sk!,
+        billing: order.billing,
+        shipping: order.shipping,
+        requestId: lambdaRequestId
+    }
+
+    const envelop: Envelope = {
+        eventType: eventType,
+        data: JSON.stringify(orderEvent) 
+    }
+
+    return clientSns.publish({
+        TopicArn: ORDER_EVENTS_TOPIC_ARN,
+        Message: JSON.stringify(envelop) 
+    }).promise()
 }
 
 function buildOrder(orderRequest: OrderRequest, products: Product[]): Order{
