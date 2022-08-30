@@ -1,9 +1,9 @@
 ## ECommerce
 
 
-* Gerenciamento de produtos
-* Gerenciamendo de pedidos
-* Gravação de eventos
+* Gerenciamento de produtos - Done
+* Gerenciamendo de pedidos - Doing
+* Gravação de eventos - Doing
 * Importação de notas fiscais
 * Auditoria
 * Alarmes
