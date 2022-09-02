@@ -2,9 +2,11 @@ import { APIGatewayProxyEvent, APIGatewayProxyResult, Context } from "aws-lambda
 import { Product, ProductRepository } from "/opt/nodejs/productsLayer"
 import { DynamoDB, SNS } from "aws-sdk"
 import * as AWSXray from "aws-xray-sdk"
+import { v4 as uuid } from "uuid"
 import { Order, OrderRepository } from "./layers/ordersLayer/nodejs/orderRepository"
 import { CarrierType, OrderProductResponse, OrderRequest, OrderResponse, PaymentType, ShippingType } from "/opt/nodejs/ordersApiLayer"
 import { OrderEvent, OrderEventType, Envelope } from '/opt/nodejs/orderEventsLayer'
+
 
 AWSXray.captureAWS(require("aws-sdk"))
 
@@ -97,18 +99,20 @@ export async function handler(event:APIGatewayProxyEvent, context: Context): Pro
 
             const order = buildOrder(orderRequest, products)
 
-            const orderCreated = await orderRepository.createOrder(order)
+            const orderCreatedPromise =  orderRepository.createOrder(order)
 
-            const eventResult = await sendOrderTopic(orderCreated, OrderEventType.CREATED, lambdaRequestId)
+            const eventResultPromise = sendOrderTopic(order, OrderEventType.CREATED, lambdaRequestId)
+
+            const resultPromises = await Promise.all([orderCreatedPromise,eventResultPromise])
 
             console.log(
-                `Order created: ${orderCreated.sk}
-                - MessageId: ${eventResult.MessageId}`
+                `Order created: ${order.sk}
+                - MessageId: ${resultPromises[1].MessageId}`
             )
 
             return {
                 statusCode:201,
-                body: JSON.stringify(convertToOrderResponse(orderCreated))
+                body: JSON.stringify(convertToOrderResponse(order))
             }
         } else {
 
@@ -213,6 +217,8 @@ function buildOrder(orderRequest: OrderRequest, products: Product[]): Order{
 
     const order: Order = {
         pk: orderRequest.email,
+        sk: uuid(),
+        createdAt: Date.now(),
         billing: {
             payment: orderRequest.payment,
             totalPrice: totalPrice
