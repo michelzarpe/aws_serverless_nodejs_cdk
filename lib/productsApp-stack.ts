@@ -4,13 +4,11 @@ import * as cdk from "aws-cdk-lib"
 import { Construct } from 'constructs'
 import * as dynadb from 'aws-cdk-lib/aws-dynamodb'
 import * as ssm from "aws-cdk-lib/aws-ssm"
-
-
+import * as iam from "aws-cdk-lib/aws-iam"
 
 interface ProductsAppStackProps extends cdk.StackProps {
     eventsDdb: dynadb.Table
 }
-
 
 export class ProductsAppStack extends cdk.Stack {
 
@@ -66,8 +64,23 @@ readonly productsDdb: dynadb.Table
             })
 
             //inserindo permissão para o productEventsHandler poder gravar valores na tabela de events
-            props.eventsDdb.grantWriteData(productEventsHandler)
+            // props.eventsDdb.grantWriteData(productEventsHandler)
 
+        //criando uma politica de acesso
+        const eventsDdbPolice = new iam.PolicyStatement({
+            effect: iam.Effect.ALLOW,
+            actions: ["dynamodb:PutItem"],
+            resources: [props.eventsDdb.tableArn],
+            conditions: {
+                ['ForAllValues:StringLike']:{
+                    'dynamodb:LeadingKeys': ['#product_*']
+                }
+            }
+        })
+        productEventsHandler.addToRolePolicy(eventsDdbPolice)   
+
+
+            
         //construindo função Fetch
         this.productsFetchHandler = new lambdaNodeJs.NodejsFunction(this, 
             "ProductsFetchFunction",{
