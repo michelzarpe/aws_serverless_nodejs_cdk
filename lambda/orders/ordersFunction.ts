@@ -155,14 +155,8 @@ export async function handler(event:APIGatewayProxyEvent, context: Context): Pro
                 statusCode:404,
                 body: (<Error>error).message
             }             
-        }
-
-        
-
-
+        }  
     }
-
-
     return {
         statusCode: 400,
         body: JSON.stringify({
@@ -195,7 +189,13 @@ function sendOrderTopic(order: Order, eventType: OrderEventType, lambdaRequestId
 
     return clientSns.publish({
         TopicArn: ORDER_EVENTS_TOPIC_ARN,
-        Message: JSON.stringify(envelop) 
+        Message: JSON.stringify(envelop),
+        MessageAttributes: {
+            eventType: {
+                DataType: "String",
+                StringValue: eventType
+            }
+        } 
     }).promise()
 }
 

@@ -1,10 +1,7 @@
 import { Context, SNSEvent, SNSMessage } from "aws-lambda"
-import { Product, ProductRepository } from "/opt/nodejs/productsLayer"
 import { AWSError, DynamoDB, SNS } from "aws-sdk"
 import * as AWSXray from "aws-xray-sdk"
-import { Order, OrderRepository } from "./layers/ordersLayer/nodejs/orderRepository"
-import { CarrierType, OrderProductResponse, OrderRequest, OrderResponse, PaymentType, ShippingType } from "/opt/nodejs/ordersApiLayer"
-import { OrderEvent, OrderEventType, Envelope } from '/opt/nodejs/orderEventsLayer'
+import { OrderEvent, Envelope } from '/opt/nodejs/orderEventsLayer'
 import { OrderEventDdb, OrderEventRepository } from "/opt/nodejs/orderEventsRepositoryLayer"
 import { PromiseResult } from "aws-sdk/lib/request"
 
