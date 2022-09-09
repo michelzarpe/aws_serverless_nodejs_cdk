@@ -6,7 +6,10 @@ import * as ssm from "aws-cdk-lib/aws-ssm"
 import * as sns from "aws-cdk-lib/aws-sns"
 import * as subs from "aws-cdk-lib/aws-sns-subscriptions"
 import * as iam from "aws-cdk-lib/aws-iam"
+import * as sqs from "aws-cdk-lib/aws-sqs"
+import * as lambdaEventSource from "aws-cdk-lib/aws-lambda-event-sources"
 import { Construct } from 'constructs'
+
 
 interface OrdersAppStackProps extends cdk.StackProps {
     productsDdb: dynamodb.Table,
@@ -61,9 +64,6 @@ export class OrdersAppStack extends cdk.Stack {
         //orders event Repository layer
         const ordersEventRepositoryLayersArn = ssm.StringParameter.valueForStringParameter(this, "OrderEventsRepositoryLayerArn")
         const ordersEventRepositoryLayer = lambda.LayerVersion.fromLayerVersionArn(this, "OrderEventsRepositoryLayerArn", ordersEventRepositoryLayersArn)
-
-
-
 
         const ordersTopic = new sns.Topic(this, "OrderEventTopic",{
             displayName: "OrderEventTopic",
@@ -153,5 +153,43 @@ export class OrdersAppStack extends cdk.Stack {
                 })
             }
         })) //se inscrevendo para receber a mensagem      
+    
+        //criando fila
+        const orderEventQueue = new sqs.Queue(this, "OrderEventsQueue",{ 
+            queueName: "order-events",
+        })
+
+        ordersTopic.addSubscription(new subs.SqsSubscription(orderEventQueue,{
+            filterPolicy: {
+                eventType: sns.SubscriptionFilter.stringFilter({
+                    allowlist: ['ORDER_CREATED']
+                })
+            }
+        }))
+        
+        //construindo funcao envio demail
+        const orderEmailsHandler = new lambdaNodeJs.NodejsFunction(this, "OrderEmailsHandler",{
+            functionName:"OrderEmailsHandler",
+            entry: "lambda/orders/orderEmailsFunction.ts",
+            handler: "handler",
+            memorySize: 128,
+            timeout: cdk.Duration.seconds(2),
+            bundling: {
+            minify: true,
+            sourceMap: false      
+            },
+            tracing: lambda.Tracing.ACTIVE,
+            layers: [ordersEventLayer],
+            insightsVersion: lambda.LambdaInsightsVersion.VERSION_1_0_119_0
+        })
+
+        // dizer que a fonte de eventos do order emails handler é orderEventQueue
+        orderEmailsHandler.addEventSource(new lambdaEventSource.SqsEventSource(orderEventQueue.{
+            batchSize: 5,
+            enabled: true,
+            maxBatchingWindow: cdk.Duration.minutes(1)
+        }))
+        
+        orderEventQueue.grantConsumeMessages(orderEmailsHandler) //Dizer para o orderEventQueue que o order EmaislHandler pode consumir
     }
 }
