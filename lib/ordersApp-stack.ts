@@ -153,10 +153,21 @@ export class OrdersAppStack extends cdk.Stack {
                 })
             }
         })) //se inscrevendo para receber a mensagem      
-    
+
+        
+        //criando fila de DLQ
+        const orderEventsDLQ = new sqs.Queue(this, "OrderEventsDLQ",{ 
+            queueName: "order-events-dlq",
+            retentionPeriod: cdk.Duration.days(10)
+        })
+
         //criando fila
         const orderEventQueue = new sqs.Queue(this, "OrderEventsQueue",{ 
             queueName: "order-events",
+            deadLetterQueue: {
+                maxReceiveCount: 2,
+                queue: orderEventsDLQ
+            }
         })
 
         ordersTopic.addSubscription(new subs.SqsSubscription(orderEventQueue,{
@@ -189,7 +200,7 @@ export class OrdersAppStack extends cdk.Stack {
             enabled: true,
             maxBatchingWindow: cdk.Duration.minutes(1)
         }))
-        
+
         orderEventQueue.grantConsumeMessages(orderEmailsHandler) //Dizer para o orderEventQueue que o order EmaislHandler pode consumir
     }
 }
