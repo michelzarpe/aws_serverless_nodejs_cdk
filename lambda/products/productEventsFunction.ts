@@ -16,6 +16,9 @@ export async function handler(events: ProductEvent, context: Context, callback: 
 
     console.log(`Lambda requestId: ${context.awsRequestId}`)
 
+    // testar dlq, trocar o codigo abaixo por o que está comentado
+    //throw 'Non valid event tye'
+
     await createEvent(events)
    
     callback(null, JSON.stringify({
