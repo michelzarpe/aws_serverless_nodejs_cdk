@@ -169,7 +169,7 @@ function sendOrderTopic(order: Order, eventType: OrderEventType, lambdaRequestId
 
     const productCodes: string [] = []
 
-    order.products.forEach((prod)=>{
+    order.products?.forEach((prod)=>{
         productCodes.push(prod.code)
     })
 
@@ -237,7 +237,7 @@ function convertToOrderResponse(order: Order): OrderResponse {
 
     const orderProducts: OrderProductResponse[]=[]
     
-    order.products.forEach((p)=>{
+    order.products?.forEach((p)=>{
         orderProducts.push({
             code: p.code,
             price: p.price
@@ -248,7 +248,7 @@ function convertToOrderResponse(order: Order): OrderResponse {
         email: order.pk,
         id: order.sk!,
         createdAt: order.createdAt!,
-        products: orderProducts,
+        products: orderProducts.length > 0 ? orderProducts : undefined,
         billing: {
             payment: order.billing.payment as PaymentType,
             totalPrice: order.billing.totalPrice
