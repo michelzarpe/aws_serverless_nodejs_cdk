@@ -3,12 +3,14 @@ import * as cdk from "aws-cdk-lib"
 import * as apigateway from "aws-cdk-lib/aws-apigateway"
 import * as cwlogs from "aws-cdk-lib/aws-logs"
 import { Construct } from 'constructs'
+import { AlpnPolicy } from "aws-cdk-lib/aws-elasticloadbalancingv2"
 
 
 interface EcommerceApiStackProps extends cdk.StackProps {
     productsFetchHandler: lambdaNodeJs.NodejsFunction;
     productsAdminHandler: lambdaNodeJs.NodejsFunction;
     ordersHandler: lambdaNodeJs.NodejsFunction;
+    ordersEventsFetchHandler: lambdaNodeJs.NodejsFunction;
 
 }
 
@@ -108,6 +110,26 @@ export class ECommerceApiStack extends cdk.Stack{
                 "application/son": orderModel
             }
         })
+        // GET /orders/events
+        const orderEventsResource = ordersResourse.addResource("events")
+        const orderEventsFetchValidator = new apigateway.RequestValidator(this, "OrderEventsFetchValidator", {
+            restApi: api, 
+            requestValidatorName: "OrderEventsFetchValidator",
+            validateRequestParameters: true
+        })
+
+        const orderEventsFunctionIntegration = new apigateway.LambdaIntegration(props.ordersEventsFetchHandler)
+        // GET /orders/events?email=haha@email.com
+        // GET /orders/events?email=haha@email.com&eventyType=ORDER_CREATED
+        orderEventsResource.addMethod('GET',orderEventsFunctionIntegration, {
+            requestParameters: {
+                'method.request.querystring.email': true,
+                'method.request.querystring.eventType': false                
+            },
+            requestValidator: orderEventsFetchValidator
+        })
+
+
     }    
 
     private createProductsService(props: EcommerceApiStackProps, api: apigateway.RestApi) {

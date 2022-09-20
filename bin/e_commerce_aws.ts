@@ -56,6 +56,7 @@ const eCommerceApiStack = new ECommerceApiStack(app,"ECommerceApiGateway", {
     productsFetchHandler: productsAppStack.productsFetchHandler,
     productsAdminHandler: productsAppStack.productsAdminHandler,
     ordersHandler: ordersAppStack.ordersHandler,
+    ordersEventsFetchHandler: ordersAppStack.orderEventsFetchHandler,
     tags: tags,
     env: env
 })
