@@ -50,5 +50,19 @@ export class EventsDbdStack extends cdk.Stack {
             scaleOutCooldown: cdk.Duration.seconds(60)
         })
        */
+    this.table.addGlobalSecondaryIndex({
+        indexName: "emailIndex", 
+        partitionKey: {
+            name: "email",
+            type: dynamodb.AttributeType.STRING
+        },
+        sortKey: {
+            name: "sk",
+            type: dynamodb.AttributeType.STRING
+        },
+        projectionType: dynamodb.ProjectionType.ALL
+    })
+    
+    
     }
 }
