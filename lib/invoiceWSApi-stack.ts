@@ -105,6 +105,45 @@ export class InvoiceWSApiStack extends cdk.Stack {
         })
 
         //invoice url handler
+        const getUrlHandler = new lambdaNodeJs.NodejsFunction(this, 
+            "InvoiceGetUrlFunction",{
+                functionName:"InvoiceGetUrlFunction",
+                entry: "lambda/invoices/invoiceGetUrlFunction.ts",
+                handler: "handler",
+                memorySize: 128,
+                timeout: cdk.Duration.seconds(2),
+                bundling: {
+                   minify: true,
+                   sourceMap: false      
+                },
+                environment: {
+                    INVOICE_DDB: invoicesDdb.tableName,
+                    BUCKET_NAME: bucket.bucketName, 
+                    INVOICE_WSAPI_ENDPOINT: wsApiEndpoint
+                },
+                tracing: lambda.Tracing.ACTIVE
+            })
+            
+        const invoicesDdbWritePolice = new iam.PolicyStatement({
+            effect: iam.Effect.ALLOW,
+            actions: ['dynamodb:PutItem'],
+            resources: [invoicesDdb.tableArn],
+            conditions:{
+                ['ForAllValues:StringLike']:{
+                    'dynamodb:LeadingKeys': ['#transaction']
+                }
+            }
+        })   
+        
+        const invoicesBucketPutObjectPolice = new iam.PolicyStatement({
+            effect: iam.Effect.ALLOW,
+            actions: ['s3:PutObject'],
+            resources: [`${bucket.bucketArn}/*`]
+        })    
+
+        getUrlHandler.addToRolePolicy(invoicesBucketPutObjectPolice)
+        getUrlHandler.addToRolePolicy(invoicesDdbWritePolice)
+        webSocketApi.grantManageConnections(getUrlHandler)
 
         //invoice import handler
 
