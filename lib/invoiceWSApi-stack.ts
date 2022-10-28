@@ -21,7 +21,20 @@ export class InvoiceWSApiStack extends cdk.Stack {
         super(scope,id,props)
     
     
-    
+        //invoice transaction layer
+        const invoiceTransactionLayerArn = ssm.StringParameter.valueForStringParameter(this, "InvoiceTransactionLayerVersionArn")
+        const invoiceTransactionLayer = lambda.LayerVersion.fromLayerVersionArn(this, "InvoiceTransactionLayer",invoiceTransactionLayerArn)
+
+        // invoice layer
+        const invoiceRepositoryLayerVersionArn = ssm.StringParameter.valueForStringParameter(this, "InvoiceRepositoryLayerVersionArn")
+        const InvoiceRepositoryLayer = lambda.LayerVersion.fromLayerVersionArn(this, "InvoiceRepositoryLayer",invoiceRepositoryLayerVersionArn)
+
+
+        //invoice WebSocket Api Layer
+        const invoiceWSConnectionLayerVersionArn = ssm.StringParameter.valueForStringParameter(this, "InvoiceWSConnectionLayerVersionArn")
+        const invoiceWSConnectionLayer = lambda.LayerVersion.fromLayerVersionArn(this, "InvoiceWSConnectionLayer",invoiceWSConnectionLayerVersionArn)
+
+
         // tabela para invoice e transaction
         const invoicesDdb = new dynamodb.Table(this, "InvoiceDdb", {
             tableName: 'invoices',
@@ -113,6 +126,7 @@ export class InvoiceWSApiStack extends cdk.Stack {
                    minify: true,
                    sourceMap: false      
                 },
+                layers:[invoiceTransactionLayer,invoiceWSConnectionLayer],
                 environment: {
                     INVOICE_DDB: invoicesDdb.tableName,
                     BUCKET_NAME: bucket.bucketName, 
@@ -153,6 +167,7 @@ export class InvoiceWSApiStack extends cdk.Stack {
                    minify: true,
                    sourceMap: false      
                 },
+                layers: [InvoiceRepositoryLayer, invoiceTransactionLayer, invoiceWSConnectionLayer],
                 environment: {
                     INVOICE_DDB: invoicesDdb.tableName,
                     INVOICE_WSAPI_ENDPOINT: wsApiEndpoint
@@ -183,6 +198,7 @@ export class InvoiceWSApiStack extends cdk.Stack {
                    minify: true,
                    sourceMap: false      
                 },
+                layers: [invoiceTransactionLayer, invoiceWSConnectionLayer],
                 environment: {
                     INVOICE_DDB: invoicesDdb.tableName,
                     INVOICE_WSAPI_ENDPOINT: wsApiEndpoint
