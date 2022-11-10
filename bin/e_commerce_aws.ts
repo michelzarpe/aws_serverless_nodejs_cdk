@@ -75,6 +75,7 @@ const invoicesAppLayeresStack = new InvoicesAppLayeresStack(app, "InvoicesAppLay
 })
 
 const invoiceWSApiStack = new InvoiceWSApiStack(app, "InvoiceApi", {
+    eventDdb: eventsDbdStack.table,
     tags: {
         cost: "Ecomerce-Import-nf",
         team: "Mz"   
@@ -82,4 +83,5 @@ const invoiceWSApiStack = new InvoiceWSApiStack(app, "InvoiceApi", {
     env: env
 })
 
-invoiceWSApiStack.addDependency(invoiceWSApiStack
+invoiceWSApiStack.addDependency(invoiceWSApiStack)
+invoiceWSApiStack.addDependency(eventsDbdStack)
