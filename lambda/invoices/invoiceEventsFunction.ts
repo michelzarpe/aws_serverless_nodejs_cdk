@@ -15,7 +15,7 @@ const apigwManagementApi = new ApiGatewayManagementApi({
     endpoint: invoiceWSApiEndpoint
 })
 
-const invoicWSService = new InvoiceWSService(apigwManagementApi)
+const invoiceWSService = new InvoiceWSService(apigwManagementApi)
 
 export async function handler(event: DynamoDBStreamEvent, contexto: Context): Promise<void> {
 
@@ -32,6 +32,10 @@ export async function handler(event: DynamoDBStreamEvent, contexto: Context): Pr
         }else if(record.eventName === 'MODIFY'){
 
         }else if(record.eventName === 'REMOVE'){
+            if(record.dynamodb!.OldImage!.pk.S === '#transaction'){
+                console.log('Invoice transaction event received')
+                promises.push(processExpiredTransaction(record.dynamodb!.OldImage!))
+            }
 
         }
         
@@ -61,4 +65,19 @@ async function createEvent(invoiceImage: {[key: string]: AttributeValue}, eventT
     }).promise()
 
     return 
+}
+
+async function processExpiredTransaction(invoiceTransactionImage: {[key: string]: AttributeValue}): Promise<void> {
+    const transactionId = invoiceTransactionImage.sk.S!
+    const connectionId = invoiceTransactionImage.connectionId.S!
+
+    console.log(`Transaction id: ${transactionId} - ConnectId: ${connectionId}`)
+    if(invoiceTransactionImage.transactionStatus.S === 'INVOICE_PROCESSED'){
+        console.log('Invoice Processed')
+    }else{
+        console.log(`Invoice import failed - Status ${invoiceTransactionImage.transactionStatus.S}`)
+        await invoiceWSService.sendInvoiceStatus(transactionId, connectionId, 'TIMEOUT')
+        await invoiceWSService.disconnectClient(connectionId)
+    }
+    
 }
