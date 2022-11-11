@@ -12,10 +12,12 @@ import * as subs from "aws-cdk-lib/aws-sns-subscriptions"
 import * as iam from "aws-cdk-lib/aws-iam"
 import * as sqs from "aws-cdk-lib/aws-sqs"
 import * as lambdaEventSource from "aws-cdk-lib/aws-lambda-event-sources"
+import * as event from "aws-cdk-lib/aws-events"
 import { Construct } from 'constructs'
 
 interface InvoiceWSApiStackProps extends cdk.StackProps {
-    eventDdb: dynamodb.Table
+    eventDdb: dynamodb.Table,
+    auditBus: event.EventBus
 }
 
 
@@ -177,13 +179,15 @@ export class InvoiceWSApiStack extends cdk.Stack {
                 layers: [InvoiceRepositoryLayer, invoiceTransactionLayer, invoiceWSConnectionLayer],
                 environment: {
                     INVOICE_DDB: invoicesDdb.tableName,
-                    INVOICE_WSAPI_ENDPOINT: wsApiEndpoint
+                    INVOICE_WSAPI_ENDPOINT: wsApiEndpoint,
+                    AUDIT_BUS_NAME: props.auditBus.eventBusName
                 },
                 tracing: lambda.Tracing.ACTIVE
             })
               
         invoicesDdb.grantReadWriteData(invoiceImportHandler)
         bucket.addEventNotification(s3.EventType.OBJECT_CREATED_PUT, new s3n.LambdaDestination(invoiceImportHandler))
+        props.auditBus.grantPutEventsTo(invoiceImportHandler)
 
         const invoicesBucketGetDeleteObjectPolicy = new iam.PolicyStatement({
             effect: iam.Effect.ALLOW,
@@ -251,11 +255,13 @@ export class InvoiceWSApiStack extends cdk.Stack {
                 tracing: lambda.Tracing.ACTIVE,
                 environment: {
                     EVENT_DDB: props.eventDdb.tableName,
-                    INVOICE_WSAPI_ENDPOINT: wsApiEndpoint
+                    INVOICE_WSAPI_ENDPOINT: wsApiEndpoint,
+                    AUDIT_BUS_NAME: props.auditBus.eventBusName
                 },
                 layers: [invoiceWSConnectionLayer]
             })
 
+            props.auditBus.grantPutEventsTo(invoiceEventsHandler)
             webSocketApi.grantManageConnections(invoiceEventsHandler)
 
                     //criando uma politica de acesso

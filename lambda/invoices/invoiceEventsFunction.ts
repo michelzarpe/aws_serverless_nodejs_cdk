@@ -1,20 +1,20 @@
 import { AttributeValue, Context, DynamoDBStreamEvent } from "aws-lambda";
-import { ApiGatewayManagementApi, DynamoDB } from "aws-sdk";
+import { ApiGatewayManagementApi, DynamoDB, EventBridge } from "aws-sdk";
 import { InvoiceWSService } from "/opt/nodejs/invoiceWSConnection";
 import * as AWSXray from "aws-xray-sdk"
-import { time } from "console";
 
 AWSXray.captureAWS(require("aws-sdk"))
 
 
 const eventsDdb = process.env.EVENT_DDB!
 const invoiceWSApiEndpoint = process.env.INVOICE_WSAPI_ENDPOINT!.substring(6)
+const AUDIT_BUS_NAME = process.env.AUDIT_BUS_NAME!
 
 const ddbClient = new DynamoDB.DocumentClient()
 const apigwManagementApi = new ApiGatewayManagementApi({
     endpoint: invoiceWSApiEndpoint
 })
-
+const eventBridgeClient = new EventBridge()
 const invoiceWSService = new InvoiceWSService(apigwManagementApi)
 
 export async function handler(event: DynamoDBStreamEvent, contexto: Context): Promise<void> {
@@ -76,8 +76,28 @@ async function processExpiredTransaction(invoiceTransactionImage: {[key: string]
         console.log('Invoice Processed')
     }else{
         console.log(`Invoice import failed - Status ${invoiceTransactionImage.transactionStatus.S}`)
-        await invoiceWSService.sendInvoiceStatus(transactionId, connectionId, 'TIMEOUT')
+        const putEventsPromise = eventBridgeClient.putEvents(
+            {
+                Entries: [
+                    {
+                        Source: 'app.invoice',
+                        EventBusName: AUDIT_BUS_NAME,
+                        DetailType: 'invoice',
+                        Time: new Date(),
+                        Detail: JSON.stringify({
+                            reason: 'TIMEOUT'
+                        })
+                    }
+                ]
+            }    
+        ).promise()
+        
+        const sendInvoicesStatusPromise = invoiceWSService.sendInvoiceStatus(transactionId, connectionId, 'TIMEOUT')
+        
+        await Promise.all([putEventsPromise, sendInvoicesStatusPromise ])
         await invoiceWSService.disconnectClient(connectionId)
+
+        
     }
     
 }
