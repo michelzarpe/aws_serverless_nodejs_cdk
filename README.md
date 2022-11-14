@@ -2,10 +2,10 @@
 
 
 * Gerenciamento de produtos - Done
-* Gerenciamendo de pedidos - Doing
-* Gravação de eventos - Doing
-* Importação de notas fiscais
-* Auditoria
-* Alarmes
+* Gerenciamendo de pedidos - Done
+* Gravação de eventos - Done
+* Importação de notas fiscais - Done
+* Auditoria -
+* Alarmes -
 
 ![](project_ecommerce.png)
