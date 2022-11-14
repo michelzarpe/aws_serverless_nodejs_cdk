@@ -50,6 +50,21 @@ export class OrdersAppStack extends cdk.Stack {
             writeCapacity: 1
         })
 
+        const writeThottleEventsMetric = this.ordersDdb.metric('WriteThroleEvents', {
+            period: cdk.Duration.minutes(2),
+            statistic: "SampleCount",
+            unit: cw.Unit.COUNT
+        })
+
+        writeThottleEventsMetric.createAlarm(this, 'WriteThottleEventsAlarm', {
+            alarmName: "WriteThrottleEvents",
+            actionsEnabled: false, 
+            evaluationPeriods: 1,
+            threshold: 25, 
+            comparisonOperator: cw.ComparisonOperator.GREATER_THAN_OR_EQUAL_TO_THRESHOLD,
+            treatMissingData: cw.TreatMissingData.NOT_BREACHING
+        })
+
         //orders layer
         const ordersLayersArn = ssm.StringParameter.valueForStringParameter(this, "OrdersLayerVersionArn")
         const ordersLayer = lambda.LayerVersion.fromLayerVersionArn(this, "OrdersLayerVersionArn",ordersLayersArn)
