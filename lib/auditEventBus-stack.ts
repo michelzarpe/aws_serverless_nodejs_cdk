@@ -8,6 +8,9 @@ import * as subs from "aws-cdk-lib/aws-sns-subscriptions"
 import * as events from "aws-cdk-lib/aws-events"
 import * as targets from "aws-cdk-lib/aws-events-targets"
 import * as sqs from "aws-cdk-lib/aws-sqs"
+import * as logs from "aws-cdk-lib/aws-logs"
+import * as cw from "aws-cdk-lib/aws-cloudwatch"
+import * as cw_actions from "aws-cdk-lib/aws-cloudwatch-actions"
 import * as lambdaEventSource from "aws-cdk-lib/aws-lambda-event-sources"
 import { Construct } from 'constructs'
 
@@ -62,13 +65,6 @@ export class AuditEventBusStack extends cdk.Stack {
             })
             
             nonValidOrderRule.addTarget(new targets.LambdaFunction(ordersErrorsFunction))
-            
-            
-
-
-
-
-
 
         // source: app.invoice
         // detailType: invoice
@@ -127,5 +123,20 @@ export class AuditEventBusStack extends cdk.Stack {
 
         timeoutImportInvoiceRule.addTarget(new targets.SqsQueue(invoiceImportTimeoutQueue))
 
+        //metrica
+        const numberOfMessagesMetrick = invoiceImportTimeoutQueue.metricApproximateNumberOfMessagesVisible({
+            period: cdk.Duration.minutes(2),
+            statistic: "Sum"
+        })
+        //alarm
+        numberOfMessagesMetrick.createAlarm(this, "InvoiceImportTimeoutAlarm",{
+            alarmDescription: "alguma descrição",
+            evaluationPeriods: 1,
+            threshold: 5,
+            actionsEnabled: false,
+            comparisonOperator: cw.ComparisonOperator.GREATER_THAN_OR_EQUAL_TO_THRESHOLD,
+            alarmName: "InvoiceImportTimeoutAlarm"
+        })
+     
     }
 }
