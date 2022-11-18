@@ -4,6 +4,7 @@ import * as apigateway from "aws-cdk-lib/aws-apigateway"
 import * as cwlogs from "aws-cdk-lib/aws-logs"
 import * as cognito from "aws-cdk-lib/aws-cognito"
 import * as lambda from "aws-cdk-lib/aws-lambda"
+import * as iam from "aws-cdk-lib/aws-iam"
 import { Construct } from 'constructs'
 import { AlpnPolicy } from "aws-cdk-lib/aws-elasticloadbalancingv2"
 
@@ -47,7 +48,19 @@ export class ECommerceApiStack extends cdk.Stack{
             })
 
             this.createCognitoAuth()
+
+            const adminUserPolicyStatement = new iam.PolicyStatement({
+                effect: iam.Effect.ALLOW,
+                actions: ["cognito-idp:AdminGetUser"],
+                resources: [this.adminUserPool.userPoolArn]
+            })
+
+            const adminUserPolicy = new iam.Policy(this, 'AdminGetUserPolicy', {
+                statements: [adminUserPolicyStatement]
+            })
         
+            adminUserPolicy.attachToRole(<iam.Role> props.productsAdminHandler.role)
+
             //integração entre lambdas e gateway na parte de produtos
             this.createProductsService(props, api)  
             this.createOrdersService(props,api)   
@@ -247,6 +260,9 @@ export class ECommerceApiStack extends cdk.Stack{
             cognitoUserPools: [this.adminUserPool]
         })
     }   
+
+
+
 
     private createOrdersService(props: EcommerceApiStackProps, api: apigateway.RestApi) {
 

@@ -44,6 +44,10 @@ readonly productsDdb: dynadb.Table
         const productEventsLayersArn = ssm.StringParameter.valueForStringParameter(this, "ProductEventsLayerVersionArn")
         const productEventsLayer = lambda.LayerVersion.fromLayerVersionArn(this, "ProductEventsLayerVersionArn",productEventsLayersArn)
 
+        //auth user infor layer
+        const authUserInfoLayerArn = ssm.StringParameter.valueForStringParameter(this, "AuthUserInfoLayerVersionArn")
+        const authUserInfoLayer = lambda.LayerVersion.fromLayerVersionArn(this, "AuthUserInfoLayerVersionArn", authUserInfoLayerArn)
+
         //criando dlq
         const dlq = new sqs.Queue(this, "ProductEventsDql", {
             queueName: "product-events-dlq",
@@ -126,7 +130,7 @@ readonly productsDdb: dynadb.Table
                     PRODUCTS_DDB: this.productsDdb.tableName,
                     PRODUCT_EVENTS_FUNCTION_NAME: productEventsHandler.functionName //acessar essa funcao 
                 },
-                layers: [productsLayer, productEventsLayer],
+                layers: [productsLayer, productEventsLayer, authUserInfoLayer],
                 tracing: lambda.Tracing.ACTIVE,
                 insightsVersion: lambda.LambdaInsightsVersion.VERSION_1_0_119_0
             })
