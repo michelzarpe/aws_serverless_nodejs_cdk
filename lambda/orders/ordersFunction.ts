@@ -1,11 +1,13 @@
 import { APIGatewayProxyEvent, APIGatewayProxyResult, Context } from "aws-lambda"
 import { Product, ProductRepository } from "/opt/nodejs/productsLayer"
-import { DynamoDB, EventBridge, SNS } from "aws-sdk"
+import { CognitoIdentityServiceProvider, DynamoDB, EventBridge, SNS } from "aws-sdk"
 import * as AWSXray from "aws-xray-sdk"
 import { v4 as uuid } from "uuid"
 import { Order, OrderRepository } from "./layers/ordersLayer/nodejs/orderRepository"
 import { CarrierType, OrderProductResponse, OrderRequest, OrderResponse, PaymentType, ShippingType } from "/opt/nodejs/ordersApiLayer"
 import { OrderEvent, OrderEventType, Envelope } from '/opt/nodejs/orderEventsLayer'
+import { AuthInfoService } from "/opt/nodejs/authUserInfo"
+
 
 
 AWSXray.captureAWS(require("aws-sdk"))
@@ -18,9 +20,11 @@ const AUDIT_BUS_NAME = process.env.AUDIT_BUS_NAME!
 const clientDB = new DynamoDB.DocumentClient()
 const clientSns = new SNS()
 const eventBridgeClient = new EventBridge()
+const cognitoIdentityServiceProvider = new CognitoIdentityServiceProvider()
 
 const orderRepository = new OrderRepository(clientDB, ORDERS_DDB)
 const productRepository = new ProductRepository(clientDB,PRODUCTS_DDB)
+const authInfoService = new AuthInfoService(cognitoIdentityServiceProvider)
 
 export async function handler(event:APIGatewayProxyEvent, context: Context): Promise<APIGatewayProxyResult> { 
 
@@ -80,13 +84,21 @@ export async function handler(event:APIGatewayProxyEvent, context: Context): Pro
         }else {
 
             console.log(`GET - all orders`)
-            
-            const orders = await orderRepository.getAllOrders()
 
-            return{
-                statusCode:200,
-                body: JSON.stringify(orders.map(convertToOrderResponse))
+            if(authInfoService.isAdminUser(event.requestContext.authorizer)){
+                const orders = await orderRepository.getAllOrders()
+                return{
+                    statusCode:200,
+                    body: JSON.stringify(orders.map(convertToOrderResponse))
+                }
+            }else{
+                return{
+                    statusCode:403,
+                    body: 'You dont have permission to access this operation'
+                }
             }
+            
+
 
         }
     }else if(httpMethod === 'POST'){

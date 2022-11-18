@@ -26,4 +26,8 @@ export class AuthInfoService {
         }
     }
 
+    isAdminUser(authorizer: APIGatewayEventDefaultAuthorizerContext): boolean {
+        return authorizer?.claims.scope.startsWith("admin")
+    }
+
 }

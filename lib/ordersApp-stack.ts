@@ -85,6 +85,10 @@ export class OrdersAppStack extends cdk.Stack {
         const ordersEventRepositoryLayersArn = ssm.StringParameter.valueForStringParameter(this, "OrderEventsRepositoryLayerArn")
         const ordersEventRepositoryLayer = lambda.LayerVersion.fromLayerVersionArn(this, "OrderEventsRepositoryLayerArn", ordersEventRepositoryLayersArn)
 
+        //auth user infor layer
+        const authUserInfoLayerArn = ssm.StringParameter.valueForStringParameter(this, "AuthUserInfoLayerVersionArn")
+        const authUserInfoLayer = lambda.LayerVersion.fromLayerVersionArn(this, "AuthUserInfoLayerVersionArn", authUserInfoLayerArn)
+
         const ordersTopic = new sns.Topic(this, "OrderEventTopic",{
             displayName: "OrderEventTopic",
             topicName:"order-events"
@@ -108,9 +112,9 @@ export class OrdersAppStack extends cdk.Stack {
                     ORDER_EVENTS_TOPIC_ARN: ordersTopic.topicArn,
                     AUDIT_BUS_NAME: props.auditBus.eventBusName
                 },
-                layers: [productsLayer, ordersLayer, ordersApiLayer, ordersEventLayer],
-                tracing: lambda.Tracing.ACTIVE,
-                insightsVersion: lambda.LambdaInsightsVersion.VERSION_1_0_119_0
+                layers: [productsLayer, ordersLayer, ordersApiLayer, ordersEventLayer, authUserInfoLayer],
+                tracing: lambda.Tracing.ACTIVE
+                //insightsVersion: lambda.LambdaInsightsVersion.VERSION_1_0_119_0
             })
 
         //inserindo permissão de leitura 
