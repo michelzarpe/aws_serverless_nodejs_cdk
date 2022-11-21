@@ -34,7 +34,9 @@ export async function handler(event:APIGatewayProxyEvent, context: Context): Pro
 
     console.log(`Request Id: ${apiRequestId} and Lambda Id: ${lambdaRequestId} and Resource: ${event.resource}`)
 
+    const isAdminUser = authInfoService.isAdminUser(event.requestContext.authorizer)
 
+    const authenticatedUser = await authInfoService.getUserInfo(event.requestContext.authorizer)
 
     if(httpMethod === 'GET'){
 
@@ -46,40 +48,46 @@ export async function handler(event:APIGatewayProxyEvent, context: Context): Pro
 
             const orderId = event.queryStringParameters!.orderId
 
-            if(email && orderId){
+            if(isAdminUser || email === authenticatedUser){
+                if(email && orderId){
 
-                console.log(`GET - order by email and orderID`)
-
-                try {
-                    const orders = await orderRepository.getAllOrdersByEmailAndOrderId(email, orderId)
-
+                    console.log(`GET - order by email and orderID`)
+    
+                    try {
+                        const orders = await orderRepository.getAllOrdersByEmailAndOrderId(email, orderId)
+    
+                        return{
+                            statusCode:200,
+                            body: JSON.stringify(convertToOrderResponse(orders))
+                        }           
+    
+                    } catch (error) {
+    
+                        console.log((<Error>error).message)
+    
+                        return{
+                            statusCode:404,
+                            body: (<Error>error).message
+                        }  
+                        
+                    }
+    
+                }else if(email){
+    
+                    console.log(`GET - all orders by email`)
+    
+                    const orders = await orderRepository.getAllOrdersByEmail(email)
+    
                     return{
                         statusCode:200,
-                        body: JSON.stringify(convertToOrderResponse(orders))
-                    }           
-
-                } catch (error) {
-
-                    console.log((<Error>error).message)
-
-                    return{
-                        statusCode:404,
-                        body: (<Error>error).message
-                    }  
-                    
+                        body: JSON.stringify(orders.map(convertToOrderResponse))
+                    }
                 }
-
-            }else if(email){
-
-                console.log(`GET - all orders by email`)
-
-                const orders = await orderRepository.getAllOrdersByEmail(email)
-
-                return{
-                    statusCode:200,
-                    body: JSON.stringify(orders.map(convertToOrderResponse))
+            }else{
+                return {
+                    statusCode: 403,
+                    body: 'You dont have permission to access this operation'
                 }
-            
             }
         }else {
 
@@ -97,9 +105,6 @@ export async function handler(event:APIGatewayProxyEvent, context: Context): Pro
                     body: 'You dont have permission to access this operation'
                 }
             }
-            
-
-
         }
     }else if(httpMethod === 'POST'){
 
@@ -108,6 +113,16 @@ export async function handler(event:APIGatewayProxyEvent, context: Context): Pro
         const orderRequest = JSON.parse(event.body!) as OrderRequest
 
         const products = await productRepository.getProductsByIds(orderRequest.productsId)
+
+        if(!isAdminUser){
+            orderRequest.email = authenticatedUser.toString()
+        } else if (orderRequest.email === null) {
+            return {
+                statusCode: 400,
+                body: 'Missing the order owner email'
+            }
+        }
+
 
         if(products.length === orderRequest.productsId.length){
 
@@ -163,39 +178,47 @@ export async function handler(event:APIGatewayProxyEvent, context: Context): Pro
         const email = event.queryStringParameters!.email
 
         const orderId = event.queryStringParameters!.orderId
+        if(isAdminUser || email === authenticatedUser){
+            try {
 
-        try {
-
-            const orderDeleted = await orderRepository.deleteOrders(email!, orderId!)
-
-            const eventResult = await sendOrderTopic(orderDeleted, OrderEventType.DELETE, lambdaRequestId)
-
-            console.log(
-                `Order deleted: ${orderDeleted.sk}
-                - MessageId: ${eventResult.MessageId}`
-            )
-
-
+                const orderDeleted = await orderRepository.deleteOrders(email!, orderId!)
+    
+                const eventResult = await sendOrderTopic(orderDeleted, OrderEventType.DELETE, lambdaRequestId)
+    
+                console.log(
+                    `Order deleted: ${orderDeleted.sk}
+                    - MessageId: ${eventResult.MessageId}`
+                )
+    
+    
+                return {
+                    statusCode:201,
+                    body: JSON.stringify(convertToOrderResponse(orderDeleted))
+                }
+                
+            } catch (error) {
+                console.log((<Error>error).message)
+    
+                return{
+                    statusCode:404,
+                    body: (<Error>error).message
+                }             
+            }  
+        }
+        return {
+            statusCode: 400,
+            body: JSON.stringify({
+                message: "Bad request"
+            })
+        }
+        }else{
             return {
-                statusCode:201,
-                body: JSON.stringify(convertToOrderResponse(orderDeleted))
+                statusCode: 403,
+                body: "you dont have access a operation"
             }
-            
-        } catch (error) {
-            console.log((<Error>error).message)
+        }
 
-            return{
-                statusCode:404,
-                body: (<Error>error).message
-            }             
-        }  
-    }
-    return {
-        statusCode: 400,
-        body: JSON.stringify({
-            message: "Bad request"
-        })
-    }
+  
 }
 
 function sendOrderTopic(order: Order, eventType: OrderEventType, lambdaRequestId: string){

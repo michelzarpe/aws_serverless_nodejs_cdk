@@ -61,6 +61,20 @@ export class ECommerceApiStack extends cdk.Stack{
             })
         
             adminUserPolicy.attachToRole(<iam.Role> props.productsAdminHandler.role)
+            adminUserPolicy.attachToRole(<iam.Role> props.ordersHandler.role)
+
+
+            const customerUserPolicyStatement = new iam.PolicyStatement({
+                effect: iam.Effect.ALLOW,
+                actions: ["cognito-idp:AdminGetUser"],
+                resources: [this.adminUserPool.userPoolArn]
+            })
+
+            const customerUserPolicy = new iam.Policy(this, 'CustomerGetUserPolicy', {
+                statements: [customerUserPolicyStatement]
+            })
+
+            customerUserPolicy.attachToRole(<iam.Role> props.ordersHandler.role)
 
             //integração entre lambdas e gateway na parte de produtos
             this.createProductsService(props, api)  
@@ -329,7 +343,7 @@ export class ECommerceApiStack extends cdk.Stack{
                         enum: ["CASH","DEBIT_CARD","CREDIT_CARD"]
                     }
                 },
-                required: ["emai","productsId","payment"]      
+                required: ["productsId","payment"]      
             }
         })
         
